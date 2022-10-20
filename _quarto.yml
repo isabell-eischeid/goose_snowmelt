@@ -1,0 +1,17 @@
+project:
+  type: book
+  output-dir: docs
+  
+book:
+  title: "title"
+  date: "October"
+  chapters: 
+    - index.qmd
+    - test.qmd
+  
+  
+format:
+  html:
+    theme: cosmo
+    code-link: TRUE
+
