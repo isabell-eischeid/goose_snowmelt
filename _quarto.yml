@@ -8,6 +8,7 @@ book:
   chapters: 
     - index.qmd
     - test.qmd
+    - test2.qmd
   
   
 format:
