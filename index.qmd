@@ -1,3 +1,28 @@
 # Overview {.unnumbered}
 
 Here you find this and that.
+
+## Libraries
+These are (probably) all the libraries you will need
+
+```{r}
+library(adehabitatHS)
+library(data.table)
+library(cowplot)
+library(drc)
+library(lubridate)
+library(MASS)
+library(pdftools)
+library(png)
+library(raster)
+library(rgdal)
+library(rgeos)
+library(rminer)
+library(sf)
+library(snow)
+library(splitstackshape)
+library(terra)
+library(tidyverse)
+library(tmap)
+```
+

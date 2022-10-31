@@ -7,9 +7,8 @@ book:
   date: "October"
   chapters: 
     - index.qmd
-    - test.qmd
-    - test2.qmd
-  
+    - disturbance_prediction
+
   
 format:
   html:
