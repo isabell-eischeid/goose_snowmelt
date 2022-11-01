@@ -5,7 +5,7 @@ Here you find this and that.
 ## Libraries
 These are (probably) all the libraries you will need
 
-```{r}
+```{r warning = FALSE, message = FALSE}
 library(adehabitatHS)
 library(data.table)
 library(cowplot)
