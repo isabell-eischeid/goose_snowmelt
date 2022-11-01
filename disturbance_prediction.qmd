@@ -60,6 +60,8 @@ df$snow[df$snow == "134"]<-22
 df$veg_class<- as.factor(df$veg_class)
 df$snow<- as.numeric(df$snow)
 
+write_csv(df, file = "data_output/disturbance_dataset_clean.csv")
+
 ```
 
 ## Modelling disturbance probability
@@ -136,19 +138,4 @@ plot(mean_veg_snow$snow, mean_veg_snow$mean, axes=FALSE, ylab="", xlab="", col="
 legend(134, 0.15, legend=c("moss tundra", "dwarf-shrub heath"), col=c("#B21EB6", "#FFC000"), 
        lty=1, lwd = 2, cex=0.8, box.lty=0)
 
-```
-
-
-## Run model for use in next scripts
-
-Running the same model with vegetation classes as with factor names 1 or 2 instead of class names to use in the disturbance maps (disturbance_map_satellite, disturbance_map_drone). You can avoid this step by running the model with numeric factors from the beginning and then relabel for plotting instead...
-
-```{r}
-d_map <- dplyr::select(df, veg_class, snow=date_snow_free, disturbance)
-d_map$snow<-as.numeric(d_map$snow)
-d_map$expsnow <- exp(d_map$snow)
-levels(d_map$veg_class) <- c(2,1)
-
-map.drm32 <- drm(disturbance ~ expsnow, veg_class, data = d_map,
-                         fct = LL2.3(), type = "binomial", pmodels = data.frame(1, veg_class, veg_class))
 ```

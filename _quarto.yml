@@ -9,6 +9,9 @@ book:
     - index.qmd
     - disturbance_prediction.qmd
     - satellite_snowcover_map.qmd
+    - satellite_vegetation_map.qmd
+    - valley_scale_disturbance_map.qmd
+    - valley_scale_telemetry_habitat.qmd
 
   
 format:

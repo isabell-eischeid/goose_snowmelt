@@ -1,0 +1,183 @@
+```{r include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+# Valley scale (satellite) habitat analysis
+Habitat use and habitat selection assessment
+
+```{r echo=FALSE}
+library(adehabitatHS)
+library(data.table)
+library(cowplot)
+library(drc)
+library(lubridate)
+library(MASS)
+library(pdftools)
+library(png)
+library(raster)
+library(rgdal)
+library(rgeos)
+library(rminer)
+library(sf)
+library(snow)
+library(splitstackshape)
+library(terra)
+library(tidyverse)
+library(tmap)
+```
+
+
+## Extract map values at GPS telemetry positions
+```{r}
+# load stacked map with vegetation classes, snowmelt and disturbance probabilty
+sat_map<-rast("raster_output/satellite_all_map.tif")
+# Load an extent file for the study area
+sat_extent= read_sf("datafiles/goose_survey_1000.shp")
+
+#Load the goose GPS data
+goose = read.csv("raster_input/goose_gps_spring2019.csv")
+goose_sub<-dplyr::select(goose, event.id, timestamp, ground.speed, individual.local.identifier, utm.easting, utm.northing, utm.zone)
+goose_spat = st_as_sf(goose_sub, coords = c("utm.easting", "utm.northing"))
+
+goose_spat<-goose_spat %>% st_set_crs(st_crs(sat_extent))
+
+goose_adv<-st_intersection(goose_spat, sat_extent, sparse = FALSE)
+goose_adv = filter(goose_adv, ground.speed < 1)
+
+#Change time format
+goose_adv <- goose_adv %>%
+  transform(timestamp = ymd_hms(timestamp))
+
+goose_adv <- goose_adv %>%
+  mutate(year = year(timestamp),
+         month = month(timestamp),
+         day = day(timestamp),
+         jday = yday(timestamp),
+         hour = hour(timestamp),
+         minute = minute(timestamp))
+
+goose_adv = filter(goose_adv, jday <155)
+
+goose_adv$individual.local.identifier<-as.factor(goose_adv$individual.local.identifier)
+
+
+# Check the number of geese included in study
+table(goose_adv$individual.local.identifier)
+
+
+# Extract raster information at goose positions
+goose_sat_map<-terra::extract(sat_map , vect(goose_adv))
+goose_sat_map<-as.data.frame(cbind(goose_sat_map, goose_adv))
+
+# add 1 to make summaries easier
+goose_sat_map$obs<-1
+
+# select one entry per hour
+goose_unique<-goose_sat_map[!duplicated(goose_sat_map[c("individual.local.identifier","jday")]),]
+```
+
+## Calculate habitat selection and use
+```{r}
+# calculate total observations per day
+goose_unique_mean<-group_by(goose_unique, jday) %>%
+  summarize_at(vars(obs),
+               list(~sum(., na.rm = T)))
+
+goose_unique_mean<-rename(goose_unique_mean, unique = obs)
+
+# calculate the number of observations per day snow data available
+goose_sat_map_goose_count_mean<-group_by(goose_sat_map, jday) %>%
+  summarize_at(vars(obs),
+               list(~sum(., na.rm = T)))
+
+goose_sat_map_goose_count_mean<-rename(goose_sat_map_goose_count_mean, all_gps = obs)
+
+# join goose observations per day with satellite dataset
+goose_sat_counts<-inner_join(goose_unique_mean, goose_sat_map_goose_count_mean)
+goose_sat_counts$jday<-as.numeric(goose_sat_counts$jday)
+
+#Remove geese that are on snow
+goose_sat_map<-filter(goose_sat_map, !(lyr1 == 0))
+goose_sat_map<-filter(goose_sat_map, !(jday < snow_date-2)) #or -3 for other graphs
+
+goose_sat_map<-distinct(goose_sat_map, individual.local.identifier,jday,hour, .keep_all= TRUE)
+
+# Calculate number of geese per snow free day and veg class
+goose_sat_map_mean<-group_by(goose_sat_map, veg_class, snow, snow_date) %>%
+  summarize_at(vars(obs),
+               list(~length(.),
+                    ~sum(., na.rm = T)))
+
+# Make a frequency table for each habitat class
+rasti_sat<-freq((sat_map$snow*10) + sat_map$veg_class)    
+rasti_sat<-as.data.frame(rasti_sat)
+
+# Join the satellite habitat class frequency and number of goose observations into one table
+goose_sat_map_mean$value<-goose_sat_map_mean$veg_class+((goose_sat_map_mean$snow)*10)
+goose_sat_join<-inner_join(goose_sat_map_mean, rasti_sat)
+
+# Reduce table and calculate proportion of used and available habitat and the habitat use ratio
+goose_sat_join<-dplyr::select(goose_sat_join, veg_class, snow, snow_date, gps=sum, map=count)
+goose_sat_join$gps_p<-goose_sat_join$gps/(sum(goose_sat_join$gps))
+goose_sat_join$map_p<-goose_sat_join$map/(sum(goose_sat_join$map))
+
+# Fix types
+goose_sat_join$veg_class<-as.factor(goose_sat_join$veg_class)
+levels(goose_sat_join$veg_class) <- c("moist","dry")
+
+# Calculate the selection ratio
+goose_sat_join$diff<-goose_sat_join$gps_p/goose_sat_join$map_p
+levels(goose_sat_join$veg_class) <- c("moss tundra","dwarf shrub heath")
+
+# Rename the datafile
+satellite_habitat_selection<-goose_sat_join
+
+# Fix the snow day!!
+satellite_habitat_selection$snow[satellite_habitat_selection$snow == 3]<-4
+
+# Calculate habitat selection
+satellite_habitat_selection$maptime<-satellite_habitat_selection$map*satellite_habitat_selection$snow
+satellite_habitat_selection$maptime_p<-satellite_habitat_selection$maptime/(sum(satellite_habitat_selection$maptime))
+satellite_habitat_selection$maptime_diff<-satellite_habitat_selection$gps_p/satellite_habitat_selection$maptime_p
+satellite_habitat_selection$habitat_use<-(satellite_habitat_selection$diff/sum(satellite_habitat_selection$diff))*100
+satellite_habitat_selection$Habitat<- as.factor(c(paste0("Habitat", 1:16)))
+
+# Ci values
+goose.used<-satellite_habitat_selection$gps
+goose.available<-satellite_habitat_selection$maptime_p
+names(goose.available) <- names(goose.used)
+wiRatio <- widesI(goose.used, goose.available)
+eb <- abs(qnorm(wiRatio$alpha/length(wiRatio$wi)))
+ci_sat<-as.data.frame(eb*wiRatio$se.wi, rownames=TRUE)
+ci_sat <- tibble::rownames_to_column(ci_sat, "Habitat")
+ci_sat$Habitat<-as.factor(ci_sat$Habitat)
+
+colnames(ci_sat) <- c("Habitat", "CI")
+
+# join the ci values with the dataframe
+satellite_habitat_selection<-inner_join(satellite_habitat_selection, ci_sat)
+
+```
+
+## Compare the disturbance prediction with habitat selection
+```{r}
+# Create dataframe with predicted disturbances from map
+mean_lyr_sat<-group_by(goose_sat_map, veg_class, snow) %>%
+  summarize_at(vars(lyr1),
+               list(~length(.),
+                    ~mean(., na.rm = T)))
+
+# Change formats
+mean_lyr_sat$veg_class<-as.factor(mean_lyr_sat$veg_class)
+levels(mean_lyr_sat$veg_class) <- c("moss tundra","dwarf shrub heath")
+
+# Fix the snow free date
+mean_lyr_sat$snow[mean_lyr_sat$snow == 3]<-4
+
+# Join the habitat use and predicted disturbance
+all_sat<-inner_join(satellite_habitat_selection, mean_lyr_sat)
+levels(all_sat$veg_class) <- c("moss tundra","dwarf shrub heath")
+
+write.table(all_sat, file = "data_output/satellite_habitat_grubbing.txt", append = FALSE, sep =  "\t", dec = ".", row.names = FALSE, col.names = TRUE)
+
+```

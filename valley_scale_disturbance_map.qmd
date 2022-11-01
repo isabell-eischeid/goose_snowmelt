@@ -1,0 +1,160 @@
+```{r include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+# Valley scale (satellite) disturbance map
+Disturbance prediction for valley scale (satellite image) and habitat use/selection calculation
+
+```{r echo=FALSE}
+library(adehabitatHS)
+library(data.table)
+library(cowplot)
+library(drc)
+library(lubridate)
+library(MASS)
+library(pdftools)
+library(png)
+library(raster)
+library(rgdal)
+library(rgeos)
+library(rminer)
+library(sf)
+library(snow)
+library(splitstackshape)
+library(terra)
+library(tidyverse)
+library(tmap)
+```
+
+
+## Data preparation
+```{r}
+# Load the cropped vegetation raster
+sat_crop<-rast("raster_output/sat_crop_new.tif")
+
+# reclassify bare ground to NA
+sat_crop_cla <- classify(sat_crop, cbind(3, NA))
+
+## Load the dataset with snow-free days
+
+sn8<-rast("raster_output/raster_snow_all8_layers_cleaned_clipped.tif")
+
+#Add all the elements of the stack to get unique values for snowmelt date
+sn8plus<-sn8$snow130+sn8$snow138+sn8$snow142+sn8$snow143+sn8$snow147+sn8$snow148+sn8$snow150+sn8$snow152
+
+#reclassify to get snow date
+m <- c(8, 134,
+       12, 138,
+       16, 142,
+       20, 143,
+       24, 147,
+       28, 148,
+       32, 150,
+       36, 152,
+       40,NA)
+rclmat <- matrix(m, ncol=2, byrow=TRUE)
+sn_date <- classify(sn8plus, rclmat, include.lowest=TRUE)
+
+#reclassify to get the snow days
+m <- c(8, 22,
+       12, 18,
+       16, 14,
+       20, 13,
+       24, 9,
+       28, 8,
+       32, 6,
+       36, 3,
+       40,NA)
+rclmat <- matrix(m, ncol=2, byrow=TRUE)
+sn_snow_free <- classify(sn8plus, rclmat, include.lowest=TRUE)
+
+#Load extent (if not loaded before)
+sat_extent= read_sf("datafiles/goose_survey_1000.shp")
+
+#Crop snow satellite maps to extent
+sn_snow_free_crop<-crop(sn_snow_free, vect(sat_extent))
+sn_snow_free_crop<-mask(sn_snow_free_crop, vect(sat_extent))
+
+sn_date_crop<-crop(sn_date, vect(sat_extent))
+sn_date_crop<-mask(sn_date_crop, vect(sat_extent))
+names(sn_date_crop) <- c('snow_date')
+
+
+# make table and save for class frequencies and snowmelt for overview figure
+sat_crop_table<-as.data.frame(freq((sn_snow_free_crop*10)+sat_crop))
+write.table(sat_crop_table, file = "data_output/satellite_snow_veg_class.txt", append = FALSE, sep =  "\t", dec = ".",
+            row.names = FALSE, col.names = TRUE)
+
+```
+
+
+## Predictive disturbance maps
+Using the predictive model to create a disturbance map for the study area
+
+```{r}
+# Prepare layers for disturbance prediction model
+
+# Give satellite layer dummy numbers for NA values
+sat_crop_cla_re <- classify(sat_crop_cla, cbind(NA, 1))
+sn_snow_free_crop_re <- classify(sn_snow_free_crop, cbind(NA, 22))
+
+# Take exponent of snow free days layer
+sn_snow_free_crop_re_exp <- exp(sn_snow_free_crop_re)
+
+# Raster stack for snow and veg class raster
+map_sat<-c(sat_crop_cla_re, sn_snow_free_crop_re_exp)
+names(map_sat) <- c('veg_class', 'expsnow')
+
+# Read the cleaned disturbance dataframe
+df<- read.csv("data_output/disturbance_dataset_clean.csv")
+
+# Take the data from the grubbing field script and run the disturbance model
+d <- dplyr::select(df, veg_class, snow, disturbance)
+d$veg_class<-as.factor(d$veg_class)
+d$expsnow <- exp(d$snow)
+levels(d$veg_class) <- c("dwarf shrub heath", "moss tundra")
+df_maps<-d
+levels(df_maps$veg_class) <- c(2,1)
+map.drm32 <- drm(disturbance ~ expsnow, veg_class, data = df_maps,
+                 fct = LL2.3(), type = "binomial", pmodels = data.frame(1, veg_class, veg_class))
+
+
+#Predict map based on model
+pred_map_sat<-predict(map_sat, map.drm32)
+
+
+#removing areas with bare ground (vegetated areas as 1 and bare ground as 0 and then multiply with predicted map)
+sat_crop_cla_fix <- classify(sat_crop_cla, cbind(3,0))
+sat_crop_cla_fix <- classify(sat_crop_cla_fix, cbind(2,1))
+
+pred_map_sat<-pred_map_sat*sat_crop_cla_fix
+
+#removing areas covered in snow until the end of the study period
+#snow days
+sn_snow_free_crop_fix <- classify(sn8$snow152, cbind(5,0))
+
+pred_map_sat<-pred_map_sat*sn_snow_free_crop_fix
+pred_map_sat<- classify(pred_map_sat, cbind(0,NA))
+
+#create raster stack with snow free days, snow date, grubbing likelihood and vegetation class
+sat_map<-c(sat_crop_cla, sn_snow_free_crop, sn_date_crop, pred_map_sat)
+names(sat_map)<-c('veg_class', 'snow', 'snow_date', 'lyr1')
+
+# save raster to avoid running the above steps again
+writeRaster(sat_map, "raster_output/satellite_all_map.tif", overwrite=TRUE)
+
+# save the two vegetation classes separately for visualization
+sat_moist<-sat_map$veg_class
+sat_moist <- classify(sat_moist, cbind(2, NA))
+pred_moist<-sat_map$lyr1*sat_moist
+writeRaster(pred_moist, "raster_output/disturbance_valley_moss.tif", overwrite=TRUE)
+
+
+sat_dry<-sat_map$veg_class
+sat_dry <- classify(sat_dry, cbind(1, NA))
+sat_dry <- classify(sat_dry, cbind(2, 1))
+pred_dry<-sat_map$lyr1*sat_dry
+writeRaster(pred_dry, "raster_output/disturbance_valley_dry.tif", overwrite=TRUE)
+
+```
+

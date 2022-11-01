@@ -159,6 +159,21 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   <a href="./satellite_snowcover_map.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Satellite snow cover map</span></a>
   </div>
 </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./satellite_vegetation_map.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Valley scale (vegetation map)</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./valley_scale_disturbance_map.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Valley scale (satellite) disturbance map</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./valley_scale_telemetry_habitat.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Valley scale (satellite) habitat analysis</span></a>
+  </div>
+</li>
     </ul>
 </div>
 </nav><!-- margin-sidebar --><div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
@@ -168,7 +183,6 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li><a href="#load-files-and-clean" id="toc-load-files-and-clean" class="nav-link active" data-scroll-target="#load-files-and-clean"><span class="toc-section-number">1.1</span>  Load files and clean</a></li>
   <li><a href="#modelling-disturbance-probability" id="toc-modelling-disturbance-probability" class="nav-link" data-scroll-target="#modelling-disturbance-probability"><span class="toc-section-number">1.2</span>  Modelling disturbance probability</a></li>
   <li><a href="#calculate-means-and-plot-the-predictions" id="toc-calculate-means-and-plot-the-predictions" class="nav-link" data-scroll-target="#calculate-means-and-plot-the-predictions"><span class="toc-section-number">1.3</span>  Calculate means and plot the predictions</a></li>
-  <li><a href="#run-model-for-use-in-next-scripts" id="toc-run-model-for-use-in-next-scripts" class="nav-link" data-scroll-target="#run-model-for-use-in-next-scripts"><span class="toc-section-number">1.4</span>  Run model for use in next scripts</a></li>
   </ul></nav>
     </div>
 <!-- main -->
@@ -236,7 +250,9 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span></span>
 <span><span class="co"># Change to factor and numeric where necessary</span></span>
 <span><span class="va">df</span><span class="op">$</span><span class="va">veg_class</span><span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">as.factor</a></span><span class="op">(</span><span class="va">df</span><span class="op">$</span><span class="va">veg_class</span><span class="op">)</span></span>
-<span><span class="va">df</span><span class="op">$</span><span class="va">snow</span><span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">df</span><span class="op">$</span><span class="va">snow</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="va">df</span><span class="op">$</span><span class="va">snow</span><span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">df</span><span class="op">$</span><span class="va">snow</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">write_csv</span><span class="op">(</span><span class="va">df</span>, file <span class="op">=</span> <span class="st">"data_output/disturbance_dataset_clean.csv"</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section><section id="modelling-disturbance-probability" class="level2" data-number="1.2"><h2 data-number="1.2" class="anchored" data-anchor-id="modelling-disturbance-probability">
 <span class="header-section-number">1.2</span> Modelling disturbance probability</h2>
@@ -302,18 +318,6 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <div class="cell-output-display">
 <p><img src="disturbance_prediction_files/figure-html/unnamed-chunk-6-1.png" class="img-fluid" width="672"></p>
 </div>
-</div>
-</section><section id="run-model-for-use-in-next-scripts" class="level2" data-number="1.4"><h2 data-number="1.4" class="anchored" data-anchor-id="run-model-for-use-in-next-scripts">
-<span class="header-section-number">1.4</span> Run model for use in next scripts</h2>
-<p>Running the same model with vegetation classes as with factor names 1 or 2 instead of class names to use in the disturbance maps (disturbance_map_satellite, disturbance_map_drone). You can avoid this step by running the model with numeric factors from the beginning and then relabel for plotting instead…</p>
-<div class="cell">
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="va">d_map</span> <span class="op">&lt;-</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">df</span>, <span class="va">veg_class</span>, snow<span class="op">=</span><span class="va">date_snow_free</span>, <span class="va">disturbance</span><span class="op">)</span></span>
-<span><span class="va">d_map</span><span class="op">$</span><span class="va">snow</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">d_map</span><span class="op">$</span><span class="va">snow</span><span class="op">)</span></span>
-<span><span class="va">d_map</span><span class="op">$</span><span class="va">expsnow</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html">exp</a></span><span class="op">(</span><span class="va">d_map</span><span class="op">$</span><span class="va">snow</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/levels.html">levels</a></span><span class="op">(</span><span class="va">d_map</span><span class="op">$</span><span class="va">veg_class</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">2</span>,<span class="fl">1</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">map.drm32</span> <span class="op">&lt;-</span> <span class="fu">drm</span><span class="op">(</span><span class="va">disturbance</span> <span class="op">~</span> <span class="va">expsnow</span>, <span class="va">veg_class</span>, data <span class="op">=</span> <span class="va">d_map</span>,</span>
-<span>                         fct <span class="op">=</span> <span class="fu">LL2.3</span><span class="op">(</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"binomial"</span>, pmodels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html">data.frame</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">veg_class</span>, <span class="va">veg_class</span><span class="op">)</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 
 
