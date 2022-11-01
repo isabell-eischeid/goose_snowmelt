@@ -8,6 +8,7 @@ book:
   chapters: 
     - index.qmd
     - disturbance_prediction.qmd
+    - satellite_snowcover_map.qmd
 
   
 format:

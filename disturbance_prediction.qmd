@@ -2,16 +2,12 @@
 - using the disturbance assessments from the field
 
 ```{r include=FALSE}
-knitr::opts_chunk$set(echo=FALSE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, results='hide')
 ```
 
 
-## Libraries
-These are (probably) all the libraries you will need
-
-```{r}
+```{r echo=FALSE}
 library(drc)
-library(pdftools)
 library(png)
 library(sf)
 library(tidyverse)
@@ -68,7 +64,7 @@ df$snow<- as.numeric(df$snow)
 
 ## Modelling disturbance probability
 
-```{r}
+```{r , fig.show = 'hide'}
 # Select data for disturbance model (snow-free date)
 d <- dplyr::select(df, veg_class, snow=date_snow_free, disturbance)
 d$snow<-as.numeric(d$snow)
@@ -130,16 +126,22 @@ legend(134, 0.15, legend=c("moss tundra", "dwarf-shrub heath"), col=c("#B21EB6",
 
 dev.off()
 
-
-# Convert to jpeg
-bitmap <- pdf_render_page("Figures/grubbing_model_drc.pdf", page = 1, dpi = 300)
-jpeg::writeJPEG(bitmap, "Figures/grubbing_model_drc.jpeg")
+```
+```{r echo=FALSE}
+plot(range(mean_veg_snow[,1]), range(c(0,1)), type='n', ylab="Disturbance probability (0-1)", xlab="Snowmelt date (Julian date)")
+lines(pred.dm.b~snow, lwd = 2, data=pred.newdata,subset=veg_class=="moss tundra",col="#B21EB6")
+lines(pred.dm.b~snow, lwd = 2, data=pred.newdata,subset=veg_class=="dwarf shrub heath",col="#FFC000")
+par(new=TRUE)
+plot(mean_veg_snow$snow, mean_veg_snow$mean, axes=FALSE, ylab="", xlab="", col="black", bg=c('#FFC000', '#B21EB6')[as.numeric(mean_veg_snow$veg_class)], pch=21)
+legend(134, 0.15, legend=c("moss tundra", "dwarf-shrub heath"), col=c("#B21EB6", "#FFC000"), 
+       lty=1, lwd = 2, cex=0.8, box.lty=0)
 
 ```
 
+
 ## Run model for use in next scripts
 
-Running the same model with vegetation classes as with factors 1/2 instead of class names to use in the disturbance maps (disturbance_map_satellite, disturbance_map_drone). You can avoid this step by running the model with numeric factors from the beginning and then relabel for plotting instead...
+Running the same model with vegetation classes as with factor names 1 or 2 instead of class names to use in the disturbance maps (disturbance_map_satellite, disturbance_map_drone). You can avoid this step by running the model with numeric factors from the beginning and then relabel for plotting instead...
 
 ```{r}
 d_map <- dplyr::select(df, veg_class, snow=date_snow_free, disturbance)
