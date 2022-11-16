@@ -72,9 +72,25 @@ goose_sat_map<-as.data.frame(cbind(goose_sat_map, goose_adv))
 # add 1 to make summaries easier
 goose_sat_map$obs<-1
 
-# select one entry per hour
-goose_unique<-goose_sat_map[!duplicated(goose_sat_map[c("individual.local.identifier","jday")]),]
+
 ```
+## Count goose individuals per day
+```{r}
+#Select one entry per identifier per day
+goose_unique<-goose_sat_map[!duplicated(goose_sat_map[c("individual.local.identifier","jday")]),]
+
+# Count 
+goose_unique_mean<-group_by(goose_unique, jday) %>%
+  summarize_at(vars(obs),
+               list(~sum(., na.rm = T)))
+# Rename
+goose_unique_mean<-rename(goose_unique_mean, unique = obs)
+
+# Write table (to be used in overview plot)
+write_csv(goose_unique_mean, file = "data_output/goose_count_telemetry.csv")
+
+```
+
 
 ## Calculate habitat selection and use
 ```{r}
@@ -178,6 +194,11 @@ mean_lyr_sat$snow[mean_lyr_sat$snow == 3]<-4
 all_sat<-inner_join(satellite_habitat_selection, mean_lyr_sat)
 levels(all_sat$veg_class) <- c("moss tundra","dwarf shrub heath")
 
-write.table(all_sat, file = "data_output/satellite_habitat_grubbing.txt", append = FALSE, sep =  "\t", dec = ".", row.names = FALSE, col.names = TRUE)
 
 ```
+## Save the final output table
+```{r}
+write_csv(all_sat, file = "data_output/satellite_telemetry_habitat_grubbing.csv")
+
+```
+

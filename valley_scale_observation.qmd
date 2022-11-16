@@ -1,0 +1,260 @@
+```{r include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+# Valley scale goose field observations
+
+```{r echo=FALSE}
+library(adehabitatHS)
+library(data.table)
+library(cowplot)
+library(drc)
+library(lubridate)
+library(MASS)
+library(pdftools)
+library(png)
+library(raster)
+library(rgdal)
+library(rgeos)
+library(rminer)
+library(sf)
+library(snow)
+library(splitstackshape)
+library(terra)
+library(tidyverse)
+library(tmap)
+```
+
+## Load and clean field data
+
+```{r}
+# Load the monitoring files
+goose_counts2019<- read.csv("E:/isabell_phd_springy_paper/springy_goose_counts/isabell_phd_spring2019_goose_monitoring_19_08_27.csv", sep=";")
+goose_counts2019_tod <- read.csv("E:/isabell_phd_springy_paper/springy_goose_counts/isabell_phd_spring2019_goose_monitoring_todalen_addition.csv", sep=";")
+
+# Load the observation waypoints
+goose_counts2019_waypoints <- read.csv("E:/isabell_phd_springy_paper/springy_goose_counts/isabell_phd_goose_counts2019_waypoints.csv", sep=";")
+
+# merge coordinates with count dataframe
+temp_file<-merge(x = goose_counts2019, y = goose_counts2019_waypoints, by = "point_id", all = TRUE)
+
+# Calculate location of goose observation
+temp_file$y_goose<-cos(temp_file$angle*pi/180)*temp_file$distance+temp_file$y_proj
+temp_file$x_goose<-sin(temp_file$angle*pi/180)*temp_file$distance+temp_file$x_proj
+
+#Remove rows that don't have coordinates
+temp_file<-temp_file[complete.cases(temp_file[ , 31:32]),]
+```
+
+## Summarize counts per day
+
+```{r}
+df<-temp_file
+
+# Change format
+df$count<-as.numeric(df$count)
+
+# Remove observations further than 600m
+df<-filter(df, distance < 600)
+
+# Count goose per day
+goose_day<-group_by(df, julian_date) %>%
+  summarize_at(vars(count),
+               list(~sum(., na.rm = T)))
+
+# Save the table with counts per day
+write_csv(goose_day, file = "data_output/goose_count_observation.csv")
+
+
+```
+
+## Extract habitat information at observation locations
+```{r}
+# Clean the dataframe, select stationary geese not on snow and within 600 meters of the observer
+df<-dplyr::select(temp_file, point_id, observation_id, julian_date, count, distance, standing, sitting, walking, eating, grazing, grubbing, vegetation, snow, gravel, water, mud, substrate_unknown, x_goose, y_goose) %>% 
+  mutate(stationary = ifelse((standing < 1) & (sitting < 1)  & (eating < 1) & (grazing < 1) & (grubbing < 1), 0, 1)) %>%
+  drop_na(stationary) %>%
+  mutate(no_snow = ifelse((vegetation < 1) & (gravel < 1)  & (water < 1) & (mud < 1), 0, 1)) %>%
+  drop_na(no_snow)%>%
+  filter(distance < 600)%>%
+  dplyr::select(-standing, -sitting, -eating, -grazing, -grubbing, -walking, -stationary, -vegetation, -snow, -gravel, -water, -mud, -substrate_unknown, -no_snow)
+
+# load the satellite map from "sat_grubbing_map"
+all_map<-rast("raster_output/satellite_all_map.tif") 
+
+# Load extent file for the area of the observation study
+obs_extent= read_sf("datafiles/goose_survey_600.shp")
+
+#Crop satellite map to extent
+all_map<-crop(all_map, vect(obs_extent))
+all_map<-terra::mask(all_map, vect(obs_extent))
+
+# turn the observation dataframe into a spatial layer
+df_spat = st_as_sf(df, coords = c("x_goose", "y_goose"))
+
+# Link the observations with the satellite map information
+all_map_df<-terra::extract(all_map , vect(df_spat))
+join<-cbind(df,all_map_df)
+
+# keep observations that cannot be linked to a day close to when a satellite image was available
+join_ok<-filter(join, (julian_date > snow_date-3) & (veg_class > 0))
+
+# Filter out entries that were not inluded in the join_ok dataset to find nearby matching pixels
+join_false<-join[!join$observation_id %in% join_ok$observation_id,]
+
+# Turn into spatial layer
+join_false_spat = st_as_sf(join_false, coords = c("x_goose", "y_goose"))
+
+# Make a 10 meter buffer around the points that were not be able to match to a snow-free point
+join_false_spat_buf10 = st_buffer(join_false_spat, 10)
+
+# Extract all values for buffer area
+join_false_spat_buf_ext10x<-terra::extract(all_map , vect(join_false_spat_buf10), exact=TRUE)
+
+# Join to obtain the values of original layers
+left<-left_join(join_false_spat_buf10, join_false_spat_buf_ext10x, by = "ID")
+
+# Filter to fit the criteria that the snow date is early enough and that the vegetation classes are the same
+join_ok10<-filter(left, (julian_date > snow_date.y-3) & (!is.na(lyr1.y)))
+
+# Make new column for the date difference between the original meltout date and the one of the buffer
+join_ok10$date_difference<-abs(join_ok10$snow_date.x-join_ok10$snow_date.y)
+
+# Remove duplicates for observation id and keep the minimum date difference
+join_ok10_reduced<-join_ok10 %>% group_by(observation_id) %>% slice(which.min(date_difference))
+
+## Do the same again with a 20m buffer
+
+# Extract the points that haven't been matched yet
+join_false10<-join_false[!join_false$observation_id %in% join_ok10_reduced$observation_id,]
+
+# Data that is not on a logical place
+join_false_spat10 = st_as_sf(join_false10, coords = c("x_goose", "y_goose"))
+
+#make a 20m buffer
+join_false_spat_buf20 = st_buffer(join_false_spat10, 20)
+
+# Extract all values for buffer area
+join_false_spat_buf_ext20x<-terra::extract(all_map , vect(join_false_spat_buf20), exact=TRUE)
+
+# Join to obtain the values of original layers
+left20<-left_join(join_false_spat_buf20, join_false_spat_buf_ext20x, by = "ID")
+
+# Filter to fit the criteria that the snow date is early enough and that the vegetation classes are the same
+join_ok20<-filter(left20, (julian_date > snow_date.y-3) & (!is.na(lyr1.y)))
+
+# Make new column for the date difference between the original meltout date and the one of the buffer
+join_ok20$date_difference<-abs(join_ok20$snow_date.x-join_ok20$snow_date.y)
+
+# Remove duplicates for observation id and keep the minimum date difference
+join_ok20_reduced<-join_ok20 %>% group_by(observation_id) %>% slice(which.min(date_difference))
+
+# Remove unnecessary columns
+join_ok10_reduced<-as.data.frame(join_ok10_reduced)
+join_ok10_reduced <- join_ok10_reduced[-c(7:10, 15:17)]
+
+join_ok20_reduced<-as.data.frame(join_ok20_reduced)
+join_ok20_reduced <- join_ok20_reduced[-c(7:10, 15:17)]
+
+join_ok_0<-dplyr::select(join_ok, -x_goose, -y_goose)
+
+# Add column with size of buffer size
+join_ok_0$buffer<-as.factor("0m")
+join_ok10_reduced$buffer<-as.factor("10m")
+join_ok20_reduced$buffer<-as.factor("20m")
+
+# Join the dataframes together
+bind<-rbind(join_ok10_reduced, join_ok20_reduced)
+bind<-rename(bind, veg_class = veg_class.y, snow = snow.y, snow_date = snow_date.y, lyr1 = lyr1.y)
+goose_obs_ok<-rbind(join_ok_0, bind)
+goose_obs_ok$count<-as.numeric(goose_obs_ok$count)
+
+```
+
+
+## Calculate habitat selection and use
+```{r}
+# Summarize the results based on vegetation class and snow-melt date
+goose_obs_ok_mean<-group_by(goose_obs_ok, veg_class, snow, snow_date) %>%
+  summarize_at(vars(count),
+               list(~length(.),
+                    ~sum(., na.rm = T)))
+
+
+# Make a frequency table for each habitat class
+rasti_sat<-freq((all_map$snow*10)+all_map$veg_class)
+rasti_sat<-as.data.frame(rasti_sat)
+
+# Join the satellite habitat class frequency and number of goose observations into one table
+goose_obs_ok_mean$value<-goose_obs_ok_mean$veg_class+((goose_obs_ok_mean$snow)*10)
+goose_obs_join<-inner_join(goose_obs_ok_mean, rasti_sat)
+
+# Reduce table and calculate proportion of used and available habitat and the selection ratio
+goose_obs_join<-dplyr::select(goose_obs_join, veg_class, snow, snow_date, gps=sum, map=count)
+goose_obs_join$gps_p<-goose_obs_join$gps/(sum(goose_obs_join$gps))
+goose_obs_join$map_p<-goose_obs_join$map/(sum(goose_obs_join$map))
+
+goose_obs_join$veg_class<-as.factor(goose_obs_join$veg_class)
+levels(goose_obs_join$veg_class) <- c("moist","dry")
+
+goose_obs_join$diff<-goose_obs_join$gps_p/goose_obs_join$map_p
+
+levels(goose_obs_join$veg_class) <- c("moss tundra","dwarf shrub heath")
+
+# Fix the snow date
+goose_obs_join$snow[goose_obs_join$snow == 3]<-4
+
+# Calculate habitat selection
+goose_obs_join$maptime<-goose_obs_join$map*goose_obs_join$snow
+goose_obs_join$maptime_p<-goose_obs_join$maptime/(sum(goose_obs_join$maptime))
+goose_obs_join$maptime_diff<-goose_obs_join$gps_p/goose_obs_join$maptime_p
+goose_obs_join$habitat_use<-(goose_obs_join$diff/sum(goose_obs_join$diff))*100
+goose_obs_join$Habitat<- as.factor(c(paste0("Habitat", 1:16)))
+
+# Ci values
+goose.used<-goose_obs_join$gps
+goose.available<-goose_obs_join$maptime_p
+names(goose.available) <- names(goose.used)
+wiRatio <- widesI(goose.used, goose.available)
+eb <- abs(qnorm(wiRatio$alpha/length(wiRatio$wi)))
+ci_obs<-as.data.frame(eb*wiRatio$se.wi, rownames=TRUE)
+ci_obs <- tibble::rownames_to_column(ci_obs, "Habitat")
+ci_obs$Habitat<-as.factor(ci_obs$Habitat)
+
+colnames(ci_obs) <- c("Habitat", "CI")
+
+# Join the table with the CI values
+goose_obs_join<-inner_join(goose_obs_join, ci_obs)
+
+```
+
+## Compare the disturbance prediction with habitat selection
+```{r}
+## Comparing the likelihood model with habitat selection
+mean_lyr_obs<-group_by(goose_obs_ok, veg_class, snow) %>%
+  summarize_at(vars(lyr1),
+               list(~length(.),
+                    ~mean(., na.rm = T)))
+
+# Fix formats
+mean_lyr_obs$veg_class<-as.factor(mean_lyr_obs$veg_class)
+levels(mean_lyr_obs$veg_class) <- c("moss tundra","dwarf shrub heath")
+mean_lyr_obs$snow[mean_lyr_obs$snow == 3]<-4
+
+# Join the habitat use and disturbance dataframes
+all_obs<-inner_join(goose_obs_join, mean_lyr_obs)
+
+# Change level names
+levels(all_obs$veg_class) <- c("moss tundra","dwarf shrub heath")
+```
+
+
+```{r}
+# Save the tables
+
+write_csv(all_obs, file = "data_output/satellite_observation_habitat_grubbing.csv")
+
+```
+
+
+

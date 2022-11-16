@@ -89,6 +89,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
+<link href="./valley_scale_observation.html" rel="next">
 <link href="./valley_scale_disturbance_map.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -173,6 +174,11 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   <a href="./valley_scale_telemetry_habitat.html" class="sidebar-item-text sidebar-link active"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Valley scale (satellite) habitat analysis</span></a>
   </div>
 </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./valley_scale_observation.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Valley scale goose field observations</span></a>
+  </div>
+</li>
     </ul>
 </div>
 </nav><!-- margin-sidebar --><div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
@@ -180,8 +186,10 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
    
   <ul>
 <li><a href="#extract-map-values-at-gps-telemetry-positions" id="toc-extract-map-values-at-gps-telemetry-positions" class="nav-link active" data-scroll-target="#extract-map-values-at-gps-telemetry-positions"><span class="toc-section-number">5.1</span>  Extract map values at GPS telemetry positions</a></li>
-  <li><a href="#calculate-habitat-selection-and-use" id="toc-calculate-habitat-selection-and-use" class="nav-link" data-scroll-target="#calculate-habitat-selection-and-use"><span class="toc-section-number">5.2</span>  Calculate habitat selection and use</a></li>
-  <li><a href="#compare-the-disturbance-prediction-with-habitat-selection" id="toc-compare-the-disturbance-prediction-with-habitat-selection" class="nav-link" data-scroll-target="#compare-the-disturbance-prediction-with-habitat-selection"><span class="toc-section-number">5.3</span>  Compare the disturbance prediction with habitat selection</a></li>
+  <li><a href="#count-goose-individuals-per-day" id="toc-count-goose-individuals-per-day" class="nav-link" data-scroll-target="#count-goose-individuals-per-day"><span class="toc-section-number">5.2</span>  Count goose individuals per day</a></li>
+  <li><a href="#calculate-habitat-selection-and-use" id="toc-calculate-habitat-selection-and-use" class="nav-link" data-scroll-target="#calculate-habitat-selection-and-use"><span class="toc-section-number">5.3</span>  Calculate habitat selection and use</a></li>
+  <li><a href="#compare-the-disturbance-prediction-with-habitat-selection" id="toc-compare-the-disturbance-prediction-with-habitat-selection" class="nav-link" data-scroll-target="#compare-the-disturbance-prediction-with-habitat-selection"><span class="toc-section-number">5.4</span>  Compare the disturbance prediction with habitat selection</a></li>
+  <li><a href="#save-the-final-output-table" id="toc-save-the-final-output-table" class="nav-link" data-scroll-target="#save-the-final-output-table"><span class="toc-section-number">5.5</span>  Save the final output table</a></li>
   </ul></nav>
     </div>
 <!-- main -->
@@ -251,15 +259,28 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span><span class="va">goose_sat_map</span><span class="op">&lt;-</span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html">as.data.frame</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html">cbind</a></span><span class="op">(</span><span class="va">goose_sat_map</span>, <span class="va">goose_adv</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># add 1 to make summaries easier</span></span>
-<span><span class="va">goose_sat_map</span><span class="op">$</span><span class="va">obs</span><span class="op">&lt;-</span><span class="fl">1</span></span>
-<span></span>
-<span><span class="co"># select one entry per hour</span></span>
-<span><span class="va">goose_unique</span><span class="op">&lt;-</span><span class="va">goose_sat_map</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html">duplicated</a></span><span class="op">(</span><span class="va">goose_sat_map</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"individual.local.identifier"</span>,<span class="st">"jday"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>,<span class="op">]</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="va">goose_sat_map</span><span class="op">$</span><span class="va">obs</span><span class="op">&lt;-</span><span class="fl">1</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-</section><section id="calculate-habitat-selection-and-use" class="level2" data-number="5.2"><h2 data-number="5.2" class="anchored" data-anchor-id="calculate-habitat-selection-and-use">
-<span class="header-section-number">5.2</span> Calculate habitat selection and use</h2>
+</section><section id="count-goose-individuals-per-day" class="level2" data-number="5.2"><h2 data-number="5.2" class="anchored" data-anchor-id="count-goose-individuals-per-day">
+<span class="header-section-number">5.2</span> Count goose individuals per day</h2>
 <div class="cell">
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># calculate total observations per day</span></span>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co">#Select one entry per identifier per day</span></span>
+<span><span class="va">goose_unique</span><span class="op">&lt;-</span><span class="va">goose_sat_map</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/duplicated.html">duplicated</a></span><span class="op">(</span><span class="va">goose_sat_map</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"individual.local.identifier"</span>,<span class="st">"jday"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>,<span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Count </span></span>
+<span><span class="va">goose_unique_mean</span><span class="op">&lt;-</span><span class="fu">group_by</span><span class="op">(</span><span class="va">goose_unique</span>, <span class="va">jday</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
+<span>  <span class="fu">summarize_at</span><span class="op">(</span><span class="fu">vars</span><span class="op">(</span><span class="va">obs</span><span class="op">)</span>,</span>
+<span>               <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">.</span>, na.rm <span class="op">=</span> <span class="cn">T</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Rename</span></span>
+<span><span class="va">goose_unique_mean</span><span class="op">&lt;-</span><span class="fu">rename</span><span class="op">(</span><span class="va">goose_unique_mean</span>, unique <span class="op">=</span> <span class="va">obs</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Write table (to be used in overview plot)</span></span>
+<span><span class="fu">write_csv</span><span class="op">(</span><span class="va">goose_unique_mean</span>, file <span class="op">=</span> <span class="st">"data_output/goose_count_telemetry.csv"</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section><section id="calculate-habitat-selection-and-use" class="level2" data-number="5.3"><h2 data-number="5.3" class="anchored" data-anchor-id="calculate-habitat-selection-and-use">
+<span class="header-section-number">5.3</span> Calculate habitat selection and use</h2>
+<div class="cell">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># calculate total observations per day</span></span>
 <span><span class="va">goose_unique_mean</span><span class="op">&lt;-</span><span class="fu">group_by</span><span class="op">(</span><span class="va">goose_unique</span>, <span class="va">jday</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
 <span>  <span class="fu">summarize_at</span><span class="op">(</span><span class="fu">vars</span><span class="op">(</span><span class="va">obs</span><span class="op">)</span>,</span>
 <span>               <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">.</span>, na.rm <span class="op">=</span> <span class="cn">T</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
@@ -338,10 +359,10 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span><span class="co"># join the ci values with the dataframe</span></span>
 <span><span class="va">satellite_habitat_selection</span><span class="op">&lt;-</span><span class="fu">inner_join</span><span class="op">(</span><span class="va">satellite_habitat_selection</span>, <span class="va">ci_sat</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-</section><section id="compare-the-disturbance-prediction-with-habitat-selection" class="level2" data-number="5.3"><h2 data-number="5.3" class="anchored" data-anchor-id="compare-the-disturbance-prediction-with-habitat-selection">
-<span class="header-section-number">5.3</span> Compare the disturbance prediction with habitat selection</h2>
+</section><section id="compare-the-disturbance-prediction-with-habitat-selection" class="level2" data-number="5.4"><h2 data-number="5.4" class="anchored" data-anchor-id="compare-the-disturbance-prediction-with-habitat-selection">
+<span class="header-section-number">5.4</span> Compare the disturbance prediction with habitat selection</h2>
 <div class="cell">
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Create dataframe with predicted disturbances from map</span></span>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="co"># Create dataframe with predicted disturbances from map</span></span>
 <span><span class="va">mean_lyr_sat</span><span class="op">&lt;-</span><span class="fu">group_by</span><span class="op">(</span><span class="va">goose_sat_map</span>, <span class="va">veg_class</span>, <span class="va">snow</span><span class="op">)</span> <span class="op">%&gt;%</span></span>
 <span>  <span class="fu">summarize_at</span><span class="op">(</span><span class="fu">vars</span><span class="op">(</span><span class="va">lyr1</span><span class="op">)</span>,</span>
 <span>               <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/length.html">length</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span>,</span>
@@ -356,9 +377,12 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span></span>
 <span><span class="co"># Join the habitat use and predicted disturbance</span></span>
 <span><span class="va">all_sat</span><span class="op">&lt;-</span><span class="fu">inner_join</span><span class="op">(</span><span class="va">satellite_habitat_selection</span>, <span class="va">mean_lyr_sat</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/levels.html">levels</a></span><span class="op">(</span><span class="va">all_sat</span><span class="op">$</span><span class="va">veg_class</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"moss tundra"</span>,<span class="st">"dwarf shrub heath"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/write.table.html">write.table</a></span><span class="op">(</span><span class="va">all_sat</span>, file <span class="op">=</span> <span class="st">"data_output/satellite_habitat_grubbing.txt"</span>, append <span class="op">=</span> <span class="cn">FALSE</span>, sep <span class="op">=</span>  <span class="st">"\t"</span>, dec <span class="op">=</span> <span class="st">"."</span>, row.names <span class="op">=</span> <span class="cn">FALSE</span>, col.names <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/base/levels.html">levels</a></span><span class="op">(</span><span class="va">all_sat</span><span class="op">$</span><span class="va">veg_class</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"moss tundra"</span>,<span class="st">"dwarf shrub heath"</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section><section id="save-the-final-output-table" class="level2" data-number="5.5"><h2 data-number="5.5" class="anchored" data-anchor-id="save-the-final-output-table">
+<span class="header-section-number">5.5</span> Save the final output table</h2>
+<div class="cell">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r code-with-copy"><code class="sourceCode R"><span><span class="fu">write_csv</span><span class="op">(</span><span class="va">all_sat</span>, file <span class="op">=</span> <span class="st">"data_output/satellite_telemetry_habitat_grubbing.csv"</span><span class="op">)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 
 
@@ -465,6 +489,9 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
       </a>          
   </div>
   <div class="nav-page nav-page-next">
+      <a href="./valley_scale_observation.html" class="pagination-link">
+        <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Valley scale goose field observations</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
   </div>
 </nav>
 </div> <!-- /content -->

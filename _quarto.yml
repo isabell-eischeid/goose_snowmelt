@@ -12,6 +12,7 @@ book:
     - satellite_vegetation_map.qmd
     - valley_scale_disturbance_map.qmd
     - valley_scale_telemetry_habitat.qmd
+    - valley_scale_observation.qmd
 
   
 format:

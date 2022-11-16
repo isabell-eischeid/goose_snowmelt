@@ -1,5 +1,5 @@
 ```{r include=FALSE}
-knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, results='hide')
 ```
 
 # Valley scale (vegetation map)
@@ -26,7 +26,7 @@ library(tmap)
 ```
 
 ## Extract the pixel values at training point locations
-```{r results='hide'}
+```{r}
 # Load the satellite summer image 
 sati<-rast("raster_input/s2_adventdalen_20190727_new.tif")
 
@@ -55,7 +55,7 @@ ggplot() +
 
 ## Run the random forest with subsets of the data to check how robust the classification is
 
-```{r results='hide'}
+```{r , fig.show = 'hide'}
 #make a simple dataset to reduce to one entry per ground truth point (ID column and class column)
 sat_data<-sat
 sat_sub_data<-sat_data[,c(1,6)]
@@ -155,7 +155,8 @@ writeRaster(sat_crop, "raster_output/sat_crop_new.tif", overwrite=TRUE)
 ```
 
 ```{r echo=FALSE}
-plot(sat_crop)
+plot(sat_crop, legend = FALSE, col = terrain.colors(3))
+legend("topright",legend = c("moss tundra", "dwarf-shrub heath", "barren/water"), fill = terrain.colors(3))
 ```
 
 
